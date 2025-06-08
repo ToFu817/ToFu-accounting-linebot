@@ -1,52 +1,157 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-} from "recharts"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Pencil, Plus, Trash2, Save } from "lucide-react"
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
-const monthlyData = [
-  { month: "1月", income: 45000, expense: 25680, unknown: 3240 },
-  { month: "2月", income: 45000, expense: 28900, unknown: 2100 },
-  { month: "3月", income: 47000, expense: 26500, unknown: 4200 },
-  { month: "4月", income: 45000, expense: 24800, unknown: 1800 },
-  { month: "5月", income: 48000, expense: 29200, unknown: 3600 },
-  { month: "6月", income: 45000, expense: 27100, unknown: 2900 },
-]
+interface ExpenseItem {
+  id: number
+  category: string
+  amount: number
+  description?: string
+  transaction_date: string
+}
 
-const expenseCategories = [
-  { name: "餐飲", value: 8500, color: "#8884d8" },
-  { name: "交通", value: 3200, color: "#82ca9d" },
-  { name: "購物", value: 6800, color: "#ffc658" },
-  { name: "娛樂", value: 2400, color: "#ff7300" },
-  { name: "其他", value: 4780, color: "#00ff88" },
-]
-
-const assetData = [
-  { category: "現金", amount: 15000 },
-  { category: "銀行存款", amount: 180000 },
-  { category: "股票現值", amount: 120000 },
-  { category: "信用卡債", amount: -25000 },
-  { category: "其他", amount: 8000 },
-]
+interface AssetItem {
+  id: number
+  category: string
+  amount: number
+  type: "asset" | "debt"
+}
 
 export default function ReportPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("monthly")
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([])
+  const [assets, setAssets] = useState<AssetItem[]>([])
+  const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null)
+  const [editingAsset, setEditingAsset] = useState<AssetItem | null>(null)
+  const [isAddingExpense, setIsAddingExpense] = useState(false)
+  const [isAddingAsset, setIsAddingAsset] = useState(false)
+  const [stats, setStats] = useState({
+    totalIncome: 45000,
+    totalExpense: 25680,
+    unknownExpense: 3240,
+    netAsset: 298000,
+  })
+
+  // 載入數據
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      // 這裡應該從 API 載入真實數據
+      // 暫時使用模擬數據
+      setExpenses([
+        { id: 1, category: "餐飲", amount: 8500, description: "各種餐費", transaction_date: "2024-01-15" },
+        { id: 2, category: "交通", amount: 3200, description: "捷運、公車", transaction_date: "2024-01-14" },
+        { id: 3, category: "購物", amount: 6800, description: "日用品", transaction_date: "2024-01-13" },
+      ])
+
+      setAssets([
+        { id: 1, category: "現金", amount: 15000, type: "asset" },
+        { id: 2, category: "台新銀行", amount: 65000, type: "asset" },
+        { id: 3, category: "聯邦銀行", amount: 48000, type: "asset" },
+        { id: 4, category: "股票現值", amount: 120000, type: "asset" },
+        { id: 5, category: "信用卡債", amount: 25000, type: "debt" },
+      ])
+    } catch (error) {
+      console.error("載入數據失敗:", error)
+    }
+  }
+
+  const saveExpense = async (expense: Partial<ExpenseItem>) => {
+    try {
+      if (expense.id) {
+        // 更新現有支出
+        setExpenses((prev) =>
+          prev.map((item) => (item.id === expense.id ? ({ ...item, ...expense } as ExpenseItem) : item)),
+        )
+      } else {
+        // 新增支出
+        const newExpense = {
+          ...expense,
+          id: Date.now(),
+          transaction_date: expense.transaction_date || new Date().toISOString().split("T")[0],
+        } as ExpenseItem
+        setExpenses((prev) => [...prev, newExpense])
+      }
+      setEditingExpense(null)
+      setIsAddingExpense(false)
+      updateStats()
+    } catch (error) {
+      console.error("儲存支出失敗:", error)
+    }
+  }
+
+  const deleteExpense = async (id: number) => {
+    try {
+      setExpenses((prev) => prev.filter((item) => item.id !== id))
+      updateStats()
+    } catch (error) {
+      console.error("刪除支出失敗:", error)
+    }
+  }
+
+  const saveAsset = async (asset: Partial<AssetItem>) => {
+    try {
+      if (asset.id) {
+        // 更新現有資產
+        setAssets((prev) => prev.map((item) => (item.id === asset.id ? ({ ...item, ...asset } as AssetItem) : item)))
+      } else {
+        // 新增資產
+        const newAsset = {
+          ...asset,
+          id: Date.now(),
+        } as AssetItem
+        setAssets((prev) => [...prev, newAsset])
+      }
+      setEditingAsset(null)
+      setIsAddingAsset(false)
+      updateStats()
+    } catch (error) {
+      console.error("儲存資產失敗:", error)
+    }
+  }
+
+  const deleteAsset = async (id: number) => {
+    try {
+      setAssets((prev) => prev.filter((item) => item.id !== id))
+      updateStats()
+    } catch (error) {
+      console.error("刪除資產失敗:", error)
+    }
+  }
+
+  const updateStats = () => {
+    const totalExpense = expenses.reduce((sum, exp) => sum + exp.amount, 0)
+    const totalAssets = assets.filter((a) => a.type === "asset").reduce((sum, asset) => sum + asset.amount, 0)
+    const totalDebts = assets.filter((a) => a.type === "debt").reduce((sum, debt) => sum + debt.amount, 0)
+    const netAsset = totalAssets - totalDebts
+
+    setStats({
+      totalIncome: 45000, // 這個應該從收入記錄計算
+      totalExpense,
+      unknownExpense: Math.max(0, 45000 - totalExpense - 5000),
+      netAsset,
+    })
+  }
+
+  const expenseCategories = expenses.map((exp) => ({
+    name: exp.category,
+    value: exp.amount,
+    color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+  }))
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -67,14 +172,15 @@ export default function ReportPage() {
             </Select>
             <Button variant="outline">匯出 Excel</Button>
             <Button variant="outline">匯出 PDF</Button>
+            <Button onClick={() => loadData()}>重新載入</Button>
           </div>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">總覽</TabsTrigger>
-            <TabsTrigger value="income-expense">收支分析</TabsTrigger>
-            <TabsTrigger value="assets">資產分析</TabsTrigger>
+            <TabsTrigger value="expenses">支出管理</TabsTrigger>
+            <TabsTrigger value="assets">資產管理</TabsTrigger>
             <TabsTrigger value="trends">趨勢分析</TabsTrigger>
           </TabsList>
 
@@ -85,7 +191,7 @@ export default function ReportPage() {
                   <CardTitle className="text-sm font-medium text-gray-600">本月總收入</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">NT$ 45,000</div>
+                  <div className="text-2xl font-bold text-green-600">NT$ {stats.totalIncome.toLocaleString()}</div>
                   <p className="text-xs text-gray-500">薪資 + 股票 + 其他</p>
                 </CardContent>
               </Card>
@@ -95,7 +201,7 @@ export default function ReportPage() {
                   <CardTitle className="text-sm font-medium text-gray-600">本月總支出</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-600">NT$ 25,680</div>
+                  <div className="text-2xl font-bold text-red-600">NT$ {stats.totalExpense.toLocaleString()}</div>
                   <p className="text-xs text-gray-500">已知支出統計</p>
                 </CardContent>
               </Card>
@@ -105,7 +211,7 @@ export default function ReportPage() {
                   <CardTitle className="text-sm font-medium text-gray-600">未知支出</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">NT$ 3,240</div>
+                  <div className="text-2xl font-bold text-orange-600">NT$ {stats.unknownExpense.toLocaleString()}</div>
                   <p className="text-xs text-gray-500">需要檢查的支出</p>
                 </CardContent>
               </Card>
@@ -115,7 +221,7 @@ export default function ReportPage() {
                   <CardTitle className="text-sm font-medium text-gray-600">淨資產</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">NT$ 298,000</div>
+                  <div className="text-2xl font-bold text-blue-600">NT$ {stats.netAsset.toLocaleString()}</div>
                   <p className="text-xs text-gray-500">總資產 - 總負債</p>
                 </CardContent>
               </Card>
@@ -156,11 +262,13 @@ export default function ReportPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {assetData.map((asset, index) => (
-                      <div key={index} className="flex items-center justify-between">
+                    {assets.map((asset) => (
+                      <div key={asset.id} className="flex items-center justify-between">
                         <span className="text-sm font-medium">{asset.category}</span>
-                        <span className={`text-sm font-bold ${asset.amount >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          NT$ {asset.amount.toLocaleString()}
+                        <span
+                          className={`text-sm font-bold ${asset.type === "asset" ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {asset.type === "debt" ? "-" : ""}NT$ {asset.amount.toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -170,115 +278,286 @@ export default function ReportPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="income-expense" className="space-y-6">
+          <TabsContent value="expenses" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>收支對比圖</CardTitle>
-                <CardDescription>過去6個月收入與支出趨勢</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>支出管理</CardTitle>
+                    <CardDescription>管理您的支出記錄</CardDescription>
+                  </div>
+                  <Button onClick={() => setIsAddingExpense(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    新增支出
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="income" fill="#10b981" name="收入" />
-                    <Bar dataKey="expense" fill="#ef4444" name="支出" />
-                    <Bar dataKey="unknown" fill="#f59e0b" name="未知支出" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="space-y-4">
+                  {expenses.map((expense) => (
+                    <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h3 className="font-medium">{expense.category}</h3>
+                        <p className="text-sm text-gray-600">{expense.description}</p>
+                        <p className="text-xs text-gray-500">{expense.transaction_date}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">NT$ {expense.amount.toLocaleString()}</span>
+                        <Button variant="outline" size="sm" onClick={() => setEditingExpense(expense)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => deleteExpense(expense.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="assets" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>銀行存款明細</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                      <span>台新銀行</span>
-                      <span className="font-bold">NT$ 65,000</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                      <span>聯邦銀行</span>
-                      <span className="font-bold">NT$ 48,000</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                      <span>國泰銀行</span>
-                      <span className="font-bold">NT$ 32,000</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                      <span>永豐銀行</span>
-                      <span className="font-bold">NT$ 35,000</span>
-                    </div>
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>資產管理</CardTitle>
+                    <CardDescription>管理您的資產和負債</CardDescription>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>股票投資狀況</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <Button onClick={() => setIsAddingAsset(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    新增資產
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {assets.map((asset) => (
+                    <div key={asset.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
-                        <p className="font-medium">股票現值</p>
-                        <p className="text-sm text-gray-600">市場價值</p>
+                        <h3 className="font-medium">{asset.category}</h3>
+                        <p className="text-sm text-gray-600">{asset.type === "asset" ? "資產" : "負債"}</p>
                       </div>
-                      <span className="font-bold">NT$ 120,000</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                      <div>
-                        <p className="font-medium">股票成本</p>
-                        <p className="text-sm text-gray-600">購買成本</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold ${asset.type === "asset" ? "text-green-600" : "text-red-600"}`}>
+                          {asset.type === "debt" ? "-" : ""}NT$ {asset.amount.toLocaleString()}
+                        </span>
+                        <Button variant="outline" size="sm" onClick={() => setEditingAsset(asset)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => deleteAsset(asset.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <span className="font-bold">NT$ 110,000</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded">
-                      <div>
-                        <p className="font-medium">未實現損益</p>
-                        <p className="text-sm text-gray-600">本月變化</p>
-                      </div>
-                      <span className="font-bold text-green-600">+NT$ 10,000</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="trends" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>淨資產趨勢</CardTitle>
-                <CardDescription>過去6個月淨資產變化</CardDescription>
+                <CardTitle>趨勢分析</CardTitle>
+                <CardDescription>財務趨勢變化</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart
-                    data={monthlyData.map((item) => ({
-                      ...item,
-                      netAsset: item.income - item.expense,
-                    }))}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="netAsset" stroke="#8884d8" strokeWidth={2} name="淨資產變化" />
-                  </LineChart>
-                </ResponsiveContainer>
+                <p className="text-gray-600">趨勢分析功能開發中...</p>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* 編輯支出對話框 */}
+      <Dialog
+        open={!!editingExpense || isAddingExpense}
+        onOpenChange={() => {
+          setEditingExpense(null)
+          setIsAddingExpense(false)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingExpense ? "編輯支出" : "新增支出"}</DialogTitle>
+          </DialogHeader>
+          <ExpenseForm
+            expense={editingExpense}
+            onSave={saveExpense}
+            onCancel={() => {
+              setEditingExpense(null)
+              setIsAddingExpense(false)
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* 編輯資產對話框 */}
+      <Dialog
+        open={!!editingAsset || isAddingAsset}
+        onOpenChange={() => {
+          setEditingAsset(null)
+          setIsAddingAsset(false)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingAsset ? "編輯資產" : "新增資產"}</DialogTitle>
+          </DialogHeader>
+          <AssetForm
+            asset={editingAsset}
+            onSave={saveAsset}
+            onCancel={() => {
+              setEditingAsset(null)
+              setIsAddingAsset(false)
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+function ExpenseForm({
+  expense,
+  onSave,
+  onCancel,
+}: {
+  expense: ExpenseItem | null
+  onSave: (expense: Partial<ExpenseItem>) => void
+  onCancel: () => void
+}) {
+  const [formData, setFormData] = useState({
+    category: expense?.category || "",
+    amount: expense?.amount || 0,
+    description: expense?.description || "",
+    transaction_date: expense?.transaction_date || new Date().toISOString().split("T")[0],
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave({ ...expense, ...formData })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="category">項目</Label>
+        <Input
+          id="category"
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="amount">金額</Label>
+        <Input
+          id="amount"
+          type="number"
+          value={formData.amount}
+          onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="description">備註</Label>
+        <Input
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        />
+      </div>
+      <div>
+        <Label htmlFor="date">日期</Label>
+        <Input
+          id="date"
+          type="date"
+          value={formData.transaction_date}
+          onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+          required
+        />
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          取消
+        </Button>
+        <Button type="submit">
+          <Save className="w-4 h-4 mr-2" />
+          儲存
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
+function AssetForm({
+  asset,
+  onSave,
+  onCancel,
+}: {
+  asset: AssetItem | null
+  onSave: (asset: Partial<AssetItem>) => void
+  onCancel: () => void
+}) {
+  const [formData, setFormData] = useState({
+    category: asset?.category || "",
+    amount: asset?.amount || 0,
+    type: asset?.type || ("asset" as "asset" | "debt"),
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave({ ...asset, ...formData })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="category">項目名稱</Label>
+        <Input
+          id="category"
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="amount">金額</Label>
+        <Input
+          id="amount"
+          type="number"
+          value={formData.amount}
+          onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="type">類型</Label>
+        <Select
+          value={formData.type}
+          onValueChange={(value: "asset" | "debt") => setFormData({ ...formData, type: value })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="asset">資產</SelectItem>
+            <SelectItem value="debt">負債</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          取消
+        </Button>
+        <Button type="submit">
+          <Save className="w-4 h-4 mr-2" />
+          儲存
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
