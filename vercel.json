@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "app/api/cron/monthly-reminder/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/monthly-reminder",
+      "schedule": "0 9 1 * *"
+    }
+  ]
+}
