@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
           await replyMessage(event.replyToken, [
             {
               type: "text",
-              text: "📊 本月記帳報表\n\n💰 總收入：NT$ 45,000\n💸 總支出：NT$ 25,680\n💳 未知支出：NT$ 3,240\n💎 淨資產：NT$ 285,420\n\n詳細報表請查看：https://your-domain.com/report",
+              text: "📊 本月記帳報表\n\n💰 總收入：NT$ 45,000\n💸 總支出：NT$ 25,680\n💳 未知支出：NT$ 3,240\n💎 淨資產：NT$ 285,420\n\n詳細報表請查看：https://accounting-linebot-ruby.vercel.app/report",
             },
           ])
         } else if (messageText === "設定") {
