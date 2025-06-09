@@ -1,80 +1,63 @@
--- 創建用戶表
+-- 建立用戶表
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    line_user_id VARCHAR(255) UNIQUE NOT NULL,
-    display_name VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id SERIAL PRIMARY KEY,
+  line_user_id VARCHAR(255) UNIQUE NOT NULL,
+  display_name VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 創建支出記錄表
+-- 建立支出表
 CREATE TABLE IF NOT EXISTS expenses (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    category VARCHAR(100) NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
-    description TEXT,
-    transaction_date DATE NOT NULL,
-    source VARCHAR(50) DEFAULT 'manual', -- manual, linepay, auto
-    line_pay_transaction_id VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  category VARCHAR(255) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  description TEXT,
+  transaction_date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 創建收入記錄表
+-- 建立收入表
 CREATE TABLE IF NOT EXISTS incomes (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    category VARCHAR(100) NOT NULL, -- salary, stock, other
-    amount DECIMAL(10,2) NOT NULL,
-    description TEXT,
-    income_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  category VARCHAR(255) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  income_date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 創建資產記錄表
+-- 建立資產表
 CREATE TABLE IF NOT EXISTS assets (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    asset_type VARCHAR(50) NOT NULL, -- cash, bank, stock, credit_card, etc.
-    asset_name VARCHAR(100) NOT NULL, -- 台新銀行, 國泰銀行, etc.
-    amount DECIMAL(12,2) NOT NULL,
-    record_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  category VARCHAR(255) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  asset_type VARCHAR(10) CHECK (asset_type IN ('asset', 'debt')) DEFAULT 'asset',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 創建銀行設定表
-CREATE TABLE IF NOT EXISTS bank_settings (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    bank_name VARCHAR(100) NOT NULL,
-    account_type VARCHAR(50) NOT NULL, -- savings, credit, investment
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- 建立索引
+CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_incomes_user_id ON incomes(user_id);
+CREATE INDEX IF NOT EXISTS idx_incomes_date ON incomes(income_date);
+CREATE INDEX IF NOT EXISTS idx_assets_user_id ON assets(user_id);
 
--- 創建提醒設定表
-CREATE TABLE IF NOT EXISTS reminder_settings (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    reminder_day INTEGER NOT NULL, -- 每月第幾天提醒 (1-31)
-    reminder_time TIME NOT NULL, -- 提醒時間
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- 建立更新時間觸發器
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
 
--- 創建股票記錄表
-CREATE TABLE IF NOT EXISTS stock_records (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    stock_name VARCHAR(100) NOT NULL,
-    current_value DECIMAL(12,2) NOT NULL,
-    cost_value DECIMAL(12,2) NOT NULL,
-    record_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 創建索引以提高查詢效能
-CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, transaction_date);
-CREATE INDEX IF NOT EXISTS idx_incomes_user_date ON incomes(user_id, income_date);
-CREATE INDEX IF NOT EXISTS idx_assets_user_date ON assets(user_id, record_date);
-CREATE INDEX IF NOT EXISTS idx_stock_records_user_date ON stock_records(user_id, record_date);
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_incomes_updated_at BEFORE UPDATE ON incomes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_assets_updated_at BEFORE UPDATE ON assets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
