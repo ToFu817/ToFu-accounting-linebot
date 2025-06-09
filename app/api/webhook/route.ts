@@ -334,7 +334,7 @@ function generateAccountSetupMessage() {
             action: {
               type: "uri",
               label: "🌐 前往網頁版設定",
-              uri: `https://tofu-accounting-linebot.vercel.app/setup`,
+              uri: `https://accounting-linebot-ruby.vercel.app/finance`,
             },
           },
           {
@@ -356,7 +356,7 @@ function generateAccountSetupMessage() {
 export async function POST(request: NextRequest) {
   try {
     // 檢查環境變數
-    if (!CHANNEL_SECRET || !CHANNEL_ACCESS_TOKEN || !supabase) {
+    if (!CHANNEL_SECRET || !CHANNEL_ACCESS_TOKEN) {
       console.error("Missing required environment variables")
       return NextResponse.json(
         {
@@ -382,7 +382,9 @@ export async function POST(request: NextRequest) {
         const userId = event.source.userId
 
         // 建立用戶記錄
-        await getOrCreateUser(userId)
+        if (supabase) {
+          await getOrCreateUser(userId)
+        }
 
         // 發送歡迎訊息
         await replyMessage(event.replyToken, [generateWelcomeMessage()])
@@ -396,8 +398,10 @@ export async function POST(request: NextRequest) {
         const displayName = event.source.displayName
 
         // 取得或建立用戶
-        const user = await getOrCreateUser(userId, displayName)
-        if (!user) continue
+        let user = null
+        if (supabase) {
+          user = await getOrCreateUser(userId, displayName)
+        }
 
         // 處理基本指令
         if (messageText === "記帳" || messageText === "開始記帳" || messageText === "開始") {
@@ -406,7 +410,7 @@ export async function POST(request: NextRequest) {
           await replyMessage(event.replyToken, [
             {
               type: "text",
-              text: `📊 您的財務報表\n\n點擊下方連結查看詳細報表：\nhttps://tofu-accounting-linebot.vercel.app/report?userId=${user.id}`,
+              text: `📊 您的財務報表\n\n點擊下方連結查看詳細報表：\nhttps://accounting-linebot-ruby.vercel.app/finance`,
             },
           ])
         } else if (messageText === "設定" || messageText === "科目設定") {
@@ -416,7 +420,7 @@ export async function POST(request: NextRequest) {
           await replyMessage(event.replyToken, [
             {
               type: "text",
-              text: "請使用以下指令：\n\n🚀 「開始記帳」- 開始使用\n📊 「報表」- 查看財務報表\n⚙️ 「設定」- 科目設定\n\n或直接輸入支出：\n例如：午餐 120",
+              text: '請使用以下指令：\n\n🚀 「開始記帳」- 開始使用\n📊 「報表」- 查看財務報表\n⚙️ "設定" - 科目設定\n\n或直接輸入支出：\n例如：午餐 120',
             },
           ])
         }
@@ -427,12 +431,14 @@ export async function POST(request: NextRequest) {
         const postbackData = event.postback.data
         const userId = event.source.userId
 
-        const user = await getOrCreateUser(userId)
-        if (!user) continue
+        let user = null
+        if (supabase) {
+          user = await getOrCreateUser(userId)
+        }
 
         switch (postbackData) {
           case "start_accounting":
-            if (!user.disclaimer_accepted) {
+            if (!user || !user.disclaimer_accepted) {
               await replyMessage(event.replyToken, [generateDisclaimerMessage()])
             } else {
               await replyMessage(event.replyToken, [generateAccountSetupMessage()])
@@ -450,7 +456,9 @@ export async function POST(request: NextRequest) {
 
           case "accept_disclaimer":
             // 更新用戶同意狀態
-            await supabase.from("users").update({ disclaimer_accepted: true }).eq("id", user.id)
+            if (supabase && user) {
+              await supabase.from("users").update({ disclaimer_accepted: true }).eq("id", user.id)
+            }
 
             await replyMessage(event.replyToken, [generateAccountSetupMessage()])
             break

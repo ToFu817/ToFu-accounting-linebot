@@ -18,7 +18,7 @@ interface FinancialItem {
   subcategory: string
 }
 
-export default function SetupPage() {
+export default function FinancePage() {
   const [items, setItems] = useState<FinancialItem[]>([
     // 資產示範資料
     { id: "1", name: "現金", amount: 5000, category: "資產", subcategory: "錢包" },
@@ -142,7 +142,7 @@ export default function SetupPage() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             記帳小豆腐 🧮
           </h1>
-          <p className="text-gray-600">您的智能財務管理助手</p>
+          <p className="text-lg text-gray-600">您的智能財務管理助手</p>
         </div>
 
         {/* 財務總覽 */}
